@@ -13,12 +13,21 @@ var options = {
 };
 
 var app = express();
-http.createServer(app).listen(80);
-https.createServer(options, app).listen(443);
+http.createServer(function(req, res) {   
+    res.writeHead(301, {"Location": "https://" + req.headers['host'] + req.url});
+    res.end();
+}).listen(80);
+
+https.createServer({ 
+    key: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem"),
+    cert: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/fullchain.pem"),
+    ca: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/chain.pem")
+}, app).listen(443);
 
 app.get('/', (req, res) => {
     res.send("Bag With Friends");
 })
+
 
 const wss = new WebSocketServer({
     port: 3000,
