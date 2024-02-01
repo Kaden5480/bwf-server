@@ -13,7 +13,7 @@ var options = {
 };
 
 var app = express();
-app.all('*', (req, res) => res.redirect(300, 'https://localhost'));
+app.all('*', (req, res) => res.redirect(300, `https://${req.headers.host}${req.url}`));
 http.createServer(app).listen(80);
 https.createServer(options, app).listen(443);
 
