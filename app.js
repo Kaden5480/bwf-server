@@ -24,7 +24,7 @@ function isSecure(req) {
 };
 
 app.use((req, res, next) => {
-    console.log(isSecure(req));
+    console.log("request");
     if (!isSecure(req)) {
         console.log(`redirecting to https://${req.headers.host}${req.url}`);
         res.redirect(301, `https://${req.headers.host}${req.url}`);
