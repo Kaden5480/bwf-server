@@ -16,26 +16,8 @@ var app = express();
 http.createServer(app).listen(80);
 https.createServer(options, app).listen(443);
 
-function isSecure(req) {
-    if (req.headers['x-forwarded-proto']) {
-        return req.headers['x-forwarded-proto'] === 'https';
-    }
-    return req.secure;
-};
-
-app.use((req, res, next) => {
-    console.log("request");
-    if (!isSecure(req)) {
-        console.log(`redirecting to https://${req.headers.host}${req.url}`);
-        res.redirect(301, `https://${req.headers.host}${req.url}`);
-    } else {
-        next();
-    }
-});
-
 app.get('/', (req, res) => {
-    console.log("access");
-    res.send("Hello from express server.");
+    res.send("Bag With Friends");
 })
 
 const wss = new WebSocketServer({
