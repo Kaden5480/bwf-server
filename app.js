@@ -12,13 +12,26 @@ var options = {
     cert: fs.readFileSync('cert.pem')
 };
 
-var httpapp = express();
-httpapp.all('*', (req, res) => res.redirect(443, `https://${req.headers.host}${req.url}`));
-http.createServer(httpapp).listen(80);
 var app = express();
+http.createServer(app).listen(80);
 https.createServer(options, app).listen(443);
 
-app.get('/', (req,res)=>{
+function isSecure(req) {
+    if (req.headers['x-forwarded-proto']) {
+        return req.headers['x-forwarded-proto'] === 'https';
+    }
+    return req.secure;
+};
+
+app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test' && !isSecure(req)) {
+        res.redirect(301, `https://${req.headers.host}${req.url}`);
+    } else {
+        next();
+    }
+});
+
+app.get('/', (req, res) => {
     res.send("Hello from express server.")
 })
 
