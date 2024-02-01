@@ -24,9 +24,13 @@ function isSecure(req) {
 };
 
 app.use((req, res, next) => {
-    if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test' && !isSecure(req)) {
+    if (!isSecure(req)) {
+        console.log(`redirecting to https://${req.headers.host}${req.url}`);
         res.redirect(301, `https://${req.headers.host}${req.url}`);
     } else {
+        console.log(`access from ${req.headers.host}`);
+        console.log(`access from ${req.hostname}`);
+        console.log(req.secure);
         next();
     }
 });
