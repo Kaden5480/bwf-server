@@ -24,19 +24,18 @@ function isSecure(req) {
 };
 
 app.use((req, res, next) => {
+    console.log(isSecure(req));
     if (!isSecure(req)) {
         console.log(`redirecting to https://${req.headers.host}${req.url}`);
         res.redirect(301, `https://${req.headers.host}${req.url}`);
     } else {
-        console.log(`access from ${req.headers.host}`);
-        console.log(`access from ${req.hostname}`);
-        console.log(req.secure);
         next();
     }
 });
 
 app.get('/', (req, res) => {
-    res.send("Hello from express server.")
+    console.log("access");
+    res.send("Hello from express server.");
 })
 
 const wss = new WebSocketServer({
