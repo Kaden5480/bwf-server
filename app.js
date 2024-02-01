@@ -1,8 +1,24 @@
 const { WebSocketServer } = require("ws");
 const readline = require("readline");
+var express = require('express');
+var https = require('https');
+var http = require('http');
+var fs = require('fs');
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
+var options = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem')
+};
+
+var app = express();
+http.createServer(app).listen(80);
+https.createServer(options, app).listen(443);
+
+app.get('/', (req,res)=>{
+    res.send("Hello from express server.")
+})
 
 const wss = new WebSocketServer({
     port: 3000,
