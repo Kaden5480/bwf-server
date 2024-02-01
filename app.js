@@ -12,9 +12,10 @@ var options = {
     cert: fs.readFileSync('cert.pem')
 };
 
+var httpapp = express();
+httpapp.all('*', (req, res) => res.redirect(443, `https://${req.headers.host}${req.url}`));
+http.createServer(httpapp).listen(80);
 var app = express();
-app.all('*', (req, res) => res.redirect(300, `https://${req.headers.host}${req.url}`));
-http.createServer(app).listen(80);
 https.createServer(options, app).listen(443);
 
 app.get('/', (req,res)=>{
