@@ -8,8 +8,8 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 var options = {
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem')
+    key: fs.readFileSync('/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/bwf.givo.xyz/cert.pem')
 };
 
 var app = express();
