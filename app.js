@@ -4,30 +4,41 @@ var express = require('express');
 var https = require('https');
 var http = require('http');
 var fs = require('fs');
+var moment = require('moment');
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
-var options = {
-    key: fs.readFileSync('/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/bwf.givo.xyz/cert.pem')
-};
+let dev = false;
+
+process.argv.forEach(function (val, index, array) {
+    if (val == "-dev") {
+        dev = true;
+    }
+});
+
+console.log("dev: " + dev)
 
 var app = express();
-http.createServer(function(req, res) {   
-    res.writeHead(301, {"Location": "https://" + req.headers['host'] + req.url});
-    res.end();
-}).listen(80);
 
-https.createServer({ 
-    key: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem"),
-    cert: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/fullchain.pem"),
-    ca: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/chain.pem")
-}, app).listen(443);
+if (!dev) {
+    http.createServer(function (req, res) {
+        res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
+        res.end();
+    }).listen(80);
 
+    https.createServer({
+        key: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem"),
+        cert: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/fullchain.pem"),
+        ca: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/chain.pem")
+    }, app).listen(443);
+} else {
+    http.createServer(app).listen(80);
+}
+
+app.use(express.static('public'));
 app.get('/', (req, res) => {
-    res.send("Bag With Friends");
-})
-
+    res.send("Server Up")
+});
 
 const wss = new WebSocketServer({
     port: 3000,
@@ -66,7 +77,7 @@ wss.on('connection', function connection(ws) {
     ws.on('message', function message(data) {
         let res = JSON.parse(data);
 
-        if (res.data != "updatePosition") {
+        if (res.data != "updatePosition" && res.data != "ping") {
             if (logging == 0) {
                 console.log("got command " + res.data);
             } else if (logging == 1) {
@@ -76,11 +87,27 @@ wss.on('connection', function connection(ws) {
 
         switch (res.data) {
             case "identify":
-                addPlayer(ws, res.id, res.name, res.scene);
+                addPlayer(ws, res.id, res.name, res.scene, res.ping);
+                let current2 = moment().valueOf();
+                ws.send(`{"data": "pong", "pong": "${current2}"}`);
                 break;
 
             case "yeet":
                 removePlayer(res.id);
+                break;
+
+            case "ping":
+                let player = playerLookup[res.id];
+                if (player == null) return;
+                let current = moment().valueOf();
+                ws.send(`{"data": "pong", "pong": "${current}"}`);
+
+                if (player.room != null) {
+                    player.room.playerPing(player, res.ping - player.lastPing);
+                }
+
+                player.lastPing = res.ping;
+                player.responding = true;
                 break;
 
             case "makeRoom":
@@ -137,7 +164,7 @@ wss.on('connection', function connection(ws) {
 
             case "updatePosition":
                 if (playerLookup[res.id].room != null) {
-                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.handL, res.handR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
+                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
                 }
                 break;
         }
@@ -146,6 +173,19 @@ wss.on('connection', function connection(ws) {
     ws.send(`{"data": "info", "info":"you connected to the server"}`);
     ws.send(`{"data": "identify"}`);
 });
+
+const checkForCrashed = setInterval(function() {
+    let current = moment().valueOf();
+    players.forEach(player => {
+        if (player.ping - current > 15000 && player.responding) {
+            if (player.room != null) {
+                player.room.playerNotResponding(player);
+            }
+        } else if (player.ping - current > 30000 && !player.responding) {
+            removePlayer(player.id);
+        }
+    });
+}, 5000);
 
 function addPlayer(ws, id, name, scene) {
     if (bannedwords.indexOf(name.toUpperCase()) != -1) {
@@ -246,11 +286,13 @@ function createRoomListJSON() {
 }
 
 class Player {
-    constructor(ws, id, name, scene) {
+    constructor(ws, id, name, scene, ping) {
         this.ws = ws;
         this.id = id;
         this.name = name;
         this.scene = scene;
+        this.lastPing = ping;
+        this.responding = true;
         this.room;
     }
 }
@@ -329,7 +371,7 @@ class Room {
         if (host == this.host) {
             this.removePlayer(player);
             this.bans = player.id;
-
+playerNotResponding
             this.players.forEach(e => {
                 e.ws.send(`{"data": "info", "info":"${player.name} was banned"}`);
             });
@@ -350,11 +392,30 @@ class Room {
         });
     }
 
-    playerUpdatePosition(player, newPosition, newHandL, newHandR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
+    playerPing(player, ping) {
+        this.players.forEach(e => {
+            if (e != player) {
+                e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":"${ping}"}`);
+            }
+        });
+    }
+
+    playerNotResponding(player) {
+        this.players.forEach(e => {
+            if (e != player) {
+                e.ws.send(`{"data": "error", "info":"${player.name} is not responding"}`);
+            }
+        });
+    }
+    
+
+    playerUpdatePosition(player, newPosition, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
         let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
             `"position":["${newPosition[0]}", "${newPosition[1]}", "${newPosition[2]}"], ` +
             `"handL":["${newHandL[0]}", "${newHandL[1]}", "${newHandL[2]}"], ` +
             `"handR":["${newHandR[0]}", "${newHandR[1]}", "${newHandR[2]}"], ` +
+            `"armStrechL":"${newArmStrechL}", ` +
+            `"armStrechR":"${newArmStrechR}", ` +
             `"footL":["${newFootL[0]}", "${newFootL[1]}", "${newFootL[2]}"], ` +
             `"footR":["${newFootR[0]}", "${newFootR[1]}", "${newFootR[2]}"], ` +
             `"footLBend":["${newFootLBend[0]}", "${newFootLBend[1]}", "${newFootLBend[2]}"], ` +
