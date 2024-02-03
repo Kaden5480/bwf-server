@@ -85,6 +85,10 @@ wss.on('connection', function connection(ws) {
             }
         }
 
+        if (res.data != "identify" && res.id != null && playerLookup[res.id] == null) {
+            ws.close();
+        }
+
         switch (res.data) {
             case "identify":
                 addPlayer(ws, res.id, res.name, res.scene, res.ping);
