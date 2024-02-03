@@ -117,11 +117,11 @@ wss.on('connection', function connection(ws) {
             case "makeRoom":
                 makeRoom(res.name, res.pass, res.id);
 
-                players.forEach(player => {
+                /*players.forEach(player => {
                     if (player.room == null) {
                         player.ws.send(createRoomListJSON());
                     }
-                });
+                });*/
                 break;
 
             case "joinRoom":
@@ -181,15 +181,21 @@ wss.on('connection', function connection(ws) {
 const checkForCrashed = setInterval(function() {
     let current = moment().valueOf();
     players.forEach(player => {
-        if (player.ping - current > 15000 && player.responding) {
+        //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
+        if (current - player.lastPing > 15000 && player.responding) {
+            console.log(`${player.name} not responding`);
             if (player.room != null) {
                 player.room.playerNotResponding(player);
             }
-        } else if (player.ping - current > 30000 && !player.responding) {
+            player.responding = false;
+        } 
+        
+        if (current-player.lastPing > 60000 && !player.responding) {
+            console.log(`${player.name} removed for not responding`);
             removePlayer(player.id);
         }
     });
-}, 5000);
+}, 10000);
 
 function addPlayer(ws, id, name, scene) {
     if (bannedwords.indexOf(name.toUpperCase()) != -1) {
