@@ -125,6 +125,12 @@ wss.on('connection', function connection(ws) {
                 });*/
                 break;
 
+            case "updateRoom":
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.updateRoom(res.name, res.pass, res.id);
+                }
+                break;
+
             case "joinRoom":
                 if (playerLookup[res.id].room != null) {
                     ws.send(`{"data": "error", "info":"already in a room"}`);
@@ -140,7 +146,7 @@ wss.on('connection', function connection(ws) {
 
             case "banPlayer":
                 if (playerLookup[res.id].room != null) {
-                    playerLookup[res.id].room.banPlayer(playerLookup[res.id], res.ban);
+                    playerLookup[res.id].room.banPlayer(playerLookup[res.id], playerLookup[res.ban]);
                 }
                 break;
 
@@ -169,7 +175,7 @@ wss.on('connection', function connection(ws) {
 
             case "updatePosition":
                 if (playerLookup[res.id].room != null) {
-                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
+                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.height, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
                 }
                 break;
         }
@@ -192,6 +198,9 @@ const checkForCrashed = setInterval(function() {
         } 
         
         if (current-player.lastPing > 60000 && !player.responding) {
+            if (player.room != null) {
+                player.room.playerRemovedNotResponding(player);
+            }
             console.log(`${player.name} removed for not responding`);
             removePlayer(player.id);
         }
@@ -252,6 +261,7 @@ function leaveRoom(id) {
     console.log("player " + player.name + ", steam id: " + id + ", left room " + player.room.name);
     player.ws.send(`{"data": "info", "info":"left room ${player.room.name}"}`);
     player.ws.send(`{"data": "inRoom", "inRoom":false}`);
+    player.ws.send(`{"data": "yeet"}`);
 
     player.room.removePlayer(player);
     player.room = null;
@@ -364,12 +374,28 @@ class Room {
         });
     }
 
+    updateRoom(newName, newPass, player) {
+        if (this.host != playerLookup[player]) {
+            playerLookup[player].send(`{"data": "error", "info":"You can't update the room!"}`);
+        }
+
+        this.name = newName;
+        this.pass = newPass;
+
+        this.players.forEach(e => {
+            e.ws.send(`{"data": "info", "info":"The room has been updated!"}`);
+            e.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}"}`);
+        });
+    }
+
     switchHost(currentHost, newHost) {
         if (this.host == currentHost && this.players.indexOf(newHost) != -1) {
             this.host = newHost;
+            this.host.ws.send(`{"data": "host"`);
 
             this.players.forEach(e => {
                 e.ws.send(`{"data": "info", "info":"${newHost.name} is now host"}`);
+                e.ws.send(`{"data": "hostUpdate", "newHost":${newHost.id}, "oldHost":${currentHost.id}}`);
             });
         }
     }
@@ -380,9 +406,8 @@ class Room {
         }
 
         if (host == this.host) {
-            this.removePlayer(player);
-            this.bans = player.id;
-playerNotResponding
+            leaveRoom(player.id);
+            this.bans.push(player.id);
             this.players.forEach(e => {
                 e.ws.send(`{"data": "info", "info":"${player.name} was banned"}`);
             });
@@ -419,9 +444,17 @@ playerNotResponding
         });
     }
     
+    playerRemovedNotResponding(player) {
+        this.players.forEach(e => {
+            if (e != player) {
+                e.ws.send(`{"data": "error", "info":"${player.name} removed because they crashed or something lmao"}`);
+            }
+        });
+    }
 
-    playerUpdatePosition(player, newPosition, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
+    playerUpdatePosition(player, newPosition, newHeight, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
         let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
+            `"height":"${newHeight}", ` +
             `"position":["${newPosition[0]}", "${newPosition[1]}", "${newPosition[2]}"], ` +
             `"handL":["${newHandL[0]}", "${newHandL[1]}", "${newHandL[2]}"], ` +
             `"handR":["${newHandR[0]}", "${newHandR[1]}", "${newHandR[2]}"], ` +
