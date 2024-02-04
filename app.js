@@ -98,6 +98,7 @@ wss.on('connection', function connection(ws) {
 
             case "yeet":
                 removePlayer(res.id);
+                ws.send(`{"data": "yeet"}`);
                 break;
 
             case "ping":
