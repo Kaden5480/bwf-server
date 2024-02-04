@@ -360,7 +360,7 @@ class Room {
 
         this.players.forEach(e => {
             e.ws.send(`{"data": "info", "info":"${player.name} left"}`);
-            e.ws.send(`{"data": "removePlayer", "player":${player.id}}`);
+            e.ws.send(`{"data": "removePlayer", "id":${player.id}}`);
         });
     }
 
