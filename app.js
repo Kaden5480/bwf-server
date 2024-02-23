@@ -4,6 +4,7 @@ var express = require('express');
 var https = require('https');
 var http = require('http');
 var fs = require('fs');
+import Long from "long";
 var moment = require('moment');
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
@@ -187,6 +188,7 @@ wss.on('connection', function connection(ws) {
 
 const checkForCrashed = setInterval(function() {
     let current = moment().valueOf();
+    let playersToRemove = [];
     players.forEach(player => {
         //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
         if (current - player.lastPing > 15000 && player.responding) {
@@ -197,14 +199,19 @@ const checkForCrashed = setInterval(function() {
             player.responding = false;
         } 
         
-        if (current-player.lastPing > 60000 && !player.responding) {
-            if (player.room != null) {
-                player.room.playerRemovedNotResponding(player);
-            }
-            removePlayer(player.id);
-            console.log(`${player.name} removed for not responding`);
+        if (current - player.lastPing > 60000 && !player.responding) {
+            playersToRemove.push(player);
         }
     });
+
+    for (let i = playersToRemove.length - 1; i >= 0; i--) {
+        let player = playersToRemove[i];
+        if (player.room != null) {
+            player.room.playerRemovedNotResponding(player);
+        }
+        removePlayer(player.id);
+        console.log(`${player.name} removed for not responding`);
+    }
 }, 10000);
 
 function addPlayer(ws, id, name, scene) {
