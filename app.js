@@ -361,6 +361,7 @@ class Room {
         player.room = this;
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
+        
     }
 
     removePlayer(player) {
