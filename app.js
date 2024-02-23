@@ -224,6 +224,7 @@ function addPlayer(ws, id, name, scene) {
         let player = playerLookup[id];
         if (player.responding) {
             console.log("duplicate player " + name + ", steam id: " + id);
+            ws.terminate();
             return;
         } else {
             console.log("reconnected player " + name + ", steam id: " + id);
