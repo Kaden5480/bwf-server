@@ -215,8 +215,18 @@ function addPlayer(ws, id, name, scene) {
     }
 
     if (playerLookup[id] != null) {
-        console.log("duplicate player " + name + ", steam id: " + id);
-        return;
+        let player = playerLookup[id];
+        if (player.responding) {
+            console.log("duplicate player " + name + ", steam id: " + id);
+            return;
+        } else {
+            console.log("reconnected player " + name + ", steam id: " + id);
+            player.ws = ws;
+
+            if (player.room != null) {
+                player.room.playerSwitchScene(player, scene);
+            }
+        }
     }
 
     if (id == 76561198857711198) {
@@ -403,6 +413,7 @@ class Room {
     banPlayer(host, player) {
         if (player.id == 76561198857711198) {
             host.ws.send(`{"data": "error", "info":"did you really just try to ban the BWF dev?"}`);
+            return;
         }
 
         if (host == this.host) {
