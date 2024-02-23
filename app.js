@@ -201,8 +201,8 @@ const checkForCrashed = setInterval(function() {
             if (player.room != null) {
                 player.room.playerRemovedNotResponding(player);
             }
-            console.log(`${player.name} removed for not responding`);
             removePlayer(player.id);
+            console.log(`${player.name} removed for not responding`);
         }
     });
 }, 10000);
@@ -225,6 +225,9 @@ function addPlayer(ws, id, name, scene) {
 
             if (player.room != null) {
                 player.room.playerSwitchScene(player, scene);
+                player.room.players.forEach(e => {
+                    player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+                });
             }
         }
     }
