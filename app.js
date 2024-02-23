@@ -4,7 +4,6 @@ var express = require('express');
 var https = require('https');
 var http = require('http');
 var fs = require('fs');
-import Long from "long";
 var moment = require('moment');
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
