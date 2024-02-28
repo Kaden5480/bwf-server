@@ -233,7 +233,7 @@ function addPlayer(ws, id, name, scene) {
             if (player.room != null) {
                 player.room.playerSwitchScene(player, scene);
                 player.room.players.forEach(e => {
-                    player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": "${e.id}", "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+                    player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
                 });
             }
         }
@@ -363,8 +363,8 @@ class Room {
 
         this.players.forEach(e => {
             e.ws.send(`{"data": "info", "info":"${player.name} joined"}`);
-            e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": "${player.id}", "scene": "${player.scene}", "host": ${this.host == player}}]}`);
-            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": "${e.id}", "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+            e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": ${player.id}, "scene": "${player.scene}", "host": ${this.host == player}}]}`);
+            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
         });
 
         this.players.push(player);
@@ -391,7 +391,7 @@ class Room {
 
         this.players.forEach(e => {
             e.ws.send(`{"data": "info", "info":"${player.name} left"}`);
-            e.ws.send(`{"data": "removePlayer", "id":"${player.id}"}`);
+            e.ws.send(`{"data": "removePlayer", "id":${player.id}}`);
         });
     }
 
@@ -445,7 +445,7 @@ class Room {
     playerSwitchScene(player, scene) {
         this.players.forEach(e => {
             if (e != player) {
-                e.ws.send(`{"data": "updatePlayerScene", "id":"${player.id}", "scene":"${player.scene}"}`);
+                e.ws.send(`{"data": "updatePlayerScene", "id":${player.id}, "scene":"${player.scene}"}`);
             }
         });
     }
@@ -453,7 +453,7 @@ class Room {
     playerPing(player, ping) {
         this.players.forEach(e => {
             if (e != player) {
-                e.ws.send(`{"data": "updatePlayerPing", "id":"${player.id}", "ping":"${ping}"}`);
+                e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":"${ping}"}`);
             }
         });
     }
@@ -475,7 +475,7 @@ class Room {
     }
 
     playerUpdatePosition(player, newPosition, newHeight, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
-        let updateString = `{"data": "updatePlayerPosition", "id":"${player.id}", ` +
+        let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
             `"height":"${newHeight}", ` +
             `"position":["${newPosition[0]}", "${newPosition[1]}", "${newPosition[2]}"], ` +
             `"handL":["${newHandL[0]}", "${newHandL[1]}", "${newHandL[2]}"], ` +
