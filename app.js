@@ -362,10 +362,6 @@ class Room {
         }
 
         this.players.forEach(e => {
-            console.log(`{"data": "info", "info":"${player.name} joined"}`);
-            console.log(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": "${player.id}", "scene": "${player.scene}", "host": ${this.host == player}}]}`);
-            console.log(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": "${e.id}", "scene": "${e.scene}", "host": ${this.host == e}}]}`);
-
             e.ws.send(`{"data": "info", "info":"${player.name} joined"}`);
             e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": "${player.id}", "scene": "${player.scene}", "host": ${this.host == player}}]}`);
             player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": "${e.id}", "scene": "${e.scene}", "host": ${this.host == e}}]}`);
