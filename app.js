@@ -427,7 +427,7 @@ class Room {
             return;
         }
 
-        if (host == this.host) {
+        if (host == this.host && player != host) {
             leaveRoom(player.id);
             this.bans.push(player.id);
             this.players.forEach(e => {
