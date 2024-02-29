@@ -453,7 +453,7 @@ class Room {
     playerPing(player, ping) {
         this.players.forEach(e => {
             if (e != player) {
-                e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":"${ping}"}`);
+                e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":${ping}}`);
             }
         });
     }
