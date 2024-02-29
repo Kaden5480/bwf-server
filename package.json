@@ -13,6 +13,7 @@
     "long": "^5.2.3",
     "moment": "^2.30.1",
     "socket.io": "^4.7.4",
+    "supervisor": "^0.12.0",
     "ws": "^8.16.0"
   },
   "optionalDependencies": {
