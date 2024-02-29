@@ -427,7 +427,11 @@ class Room {
             return;
         }
 
-        if (host == this.host && player != host) {
+        if (player == host) {
+            host.ws.send(`{"data": "error", "info":"You can't ban yourself!"}`);
+        }
+
+        if (host == this.host) {
             leaveRoom(player.id);
             this.bans.push(player.id);
             this.players.forEach(e => {
