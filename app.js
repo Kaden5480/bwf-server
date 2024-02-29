@@ -108,7 +108,7 @@ wss.on('connection', function connection(ws) {
                 ws.send(`{"data": "pong", "pong": "${current}"}`);
 
                 if (player.room != null) {
-                    player.room.playerPing(player, res.ping - player.lastPing);
+                    player.room.playerPing(player, ((res.ping - player.lastPing) - 1000) * 2);
                 }
 
                 player.lastPing = res.ping;
@@ -239,7 +239,7 @@ function addPlayer(ws, id, name, scene) {
         }
     }
 
-    if (id == 76561198857711198) {
+    if (id == "76561198857711198") {
         name = "[BWF DEV] " + name;
     }
 
@@ -355,7 +355,7 @@ class Room {
             return;
         }
 
-        if (pass != this.pass && player.id != 76561198857711198) {
+        if (pass != this.pass && player.id != "76561198857711198") {
             player.ws.send(`{"data": "error", "info":"incorrect password"}`);
 
             return;
@@ -397,7 +397,7 @@ class Room {
 
     updateRoom(newName, newPass, player) {
         if (this.host != playerLookup[player]) {
-            playerLookup[player].send(`{"data": "error", "info":"You can't update the room!"}`);
+            playerLookup[player].ws.send(`{"data": "error", "info":"You can't update the room!"}`);
         }
 
         this.name = newName;
@@ -422,7 +422,7 @@ class Room {
     }
 
     banPlayer(host, player) {
-        if (player.id == 76561198857711198) {
+        if (player.id == "76561198857711198") {
             host.ws.send(`{"data": "error", "info":"did you really just try to ban the BWF dev?"}`);
             return;
         }
