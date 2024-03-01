@@ -191,11 +191,11 @@ const checkForCrashed = setInterval(function() {
     players.forEach(player => {
         //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
         if (current - player.lastPing > 15000 && player.responding) {
-            console.log(`${player.name} not responding`);
+            console.log(`${player.name} is not responding`);
+            player.responding = false;
             if (player.room != null) {
                 player.room.playerNotResponding(player);
             }
-            player.responding = false;
         } 
         
         if (current - player.lastPing > 60000 && !player.responding) {
