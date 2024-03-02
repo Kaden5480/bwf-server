@@ -246,6 +246,7 @@ function addPlayer(ws, id, name, scene) {
                 player.room.playerSwitchScene(player, scene);
                 player.room.reAddPlayer(player);
             }
+            return;
         }
     }
 
