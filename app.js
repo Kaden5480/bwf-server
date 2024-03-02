@@ -185,6 +185,8 @@ wss.on('connection', function connection(ws) {
 });
 
 const checkForCrashed = setInterval(function() {
+    if (players.length == 0) return;
+
     let current = moment().valueOf();
     let playersToRemove = [];
 
