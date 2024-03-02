@@ -241,9 +241,7 @@ function addPlayer(ws, id, name, scene) {
 
             if (player.room != null) {
                 player.room.playerSwitchScene(player, scene);
-                player.room.players.forEach(e => {
-                    player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
-                });
+                player.room.reAddPlayer(player);
             }
         }
     }
@@ -380,6 +378,16 @@ class Room {
 
         this.players.push(player);
         player.room = this;
+        player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
+        player.ws.send(`{"data": "inRoom", "inRoom":true}`);
+        player.ws.send(`{"data": "hostUpdate", "newHost":${this.host.id}, "oldHost":${this.host.id}}`);
+    }
+
+    reAddPlayer(player) {
+        this.players.forEach(e => {
+            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+        });
+
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
         player.ws.send(`{"data": "hostUpdate", "newHost":${this.host.id}, "oldHost":${this.host.id}}`);
