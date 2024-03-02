@@ -1,0 +1,98 @@
+1
+{
+  data: 'identify',
+  id: '76561198023672898',
+  name: 'NyteRev',
+  scene: 'TitleScreen',
+  ping: 1709345817010
+}
+added new player NyteRev, steam id: 76561198023672898
+{ data: 'getRooms' }
+{ data: 'getRooms' }
+{ data: 'getRooms' }
+{
+  data: 'identify',
+  id: '76561198857711198',
+  name: 'Paptort',
+  scene: 'TitleScreen',
+  ping: 1709345840702
+}
+added new player [BWF DEV] Paptort, steam id: 76561198857711198
+{ data: 'getRooms' }
+{ data: 'getRooms' }
+{ data: 'getRooms' }
+{ data: 'getRooms' }
+{
+  data: 'makeRoom',
+  id: '76561198857711198',
+  name: 'test room',
+  pass: ''
+}
+player [BWF DEV] Paptort, steam id: 76561198857711198, made room test room:, id: 0
+{ data: 'getRooms' }
+{ data: 'joinRoom', id: '76561198023672898', room: 0, pass: '' }
+{ data: 'leaveRoom', id: '76561198023672898' }
+player NyteRev, steam id: 76561198023672898, left room test room
+{ data: 'joinRoom', id: '76561198023672898', room: 0, pass: '' }
+{ data: 'leaveRoom', id: '76561198023672898' }
+player NyteRev, steam id: 76561198023672898, left room test room
+{
+  data: 'identify',
+  id: '76561198201955405',
+  name: 'sea',
+  scene: 'TitleScreen',
+  ping: 1709345794492
+}
+added new player sea, steam id: 76561198201955405
+{ data: 'getRooms' }
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'joinRoom', id: '76561198201955405', room: 0, pass: '' }
+{
+  data: 'identify',
+  id: '76561198113974636',
+  name: 'Devbruh',
+  scene: 'TitleScreen',
+  ping: 1709345896917
+}
+added new player Devbruh, steam id: 76561198113974636
+{ data: 'getRooms' }
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'switchScene', id: '76561198201955405', scene: 'Cabin' }
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'makeRoom', id: '76561198113974636', name: '', pass: '' }
+player Devbruh, steam id: 76561198113974636, made room :, id: 1
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'joinRoom', id: '76561198023672898', room: 0, pass: '' }
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'leaveRoom', id: '76561198857711198' }
+player [BWF DEV] Paptort, steam id: 76561198857711198, left room test room
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'joinRoom', id: '76561198857711198', room: 1, pass: '' }
+{ data: 'leaveRoom', id: '76561198857711198' }
+player [BWF DEV] Paptort, steam id: 76561198857711198, left room
+{ data: 'joinRoom', id: '76561198857711198', room: 0, pass: '' }
+sea is not responding
+player was null cant remove
+sea removed for not responding
+{ data: 'leaveRoom', id: '76561198857711198' }
+player [BWF DEV] Paptort, steam id: 76561198857711198, left room test room
+{ data: 'joinRoom', id: '76561198857711198', room: 1, pass: '' }
+{ data: 'leaveRoom', id: '76561198857711198' }
+player [BWF DEV] Paptort, steam id: 76561198857711198, left room
+{ data: 'yeet', id: '76561198857711198' }
+player was null cant remove
+sea is not responding
+player was null cant remove
+sea removed for not responding
