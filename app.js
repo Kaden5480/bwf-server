@@ -91,166 +91,91 @@ wss.on('connection', function connection(ws) {
 
         switch (res.data) {
             case "identify":
-                try {
-                    addPlayer(ws, res.id, res.name, res.scene, res.ping);
-                    let current2 = moment().valueOf();
-                    ws.send(`{"data": "pong", "pong": "${current2}"}`);
-                } catch {
-                    console.log("error when adding player");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to identify"}`);
-                }
+                addPlayer(ws, res.id, res.name, res.scene, res.ping);
+                let current2 = moment().valueOf();
+                ws.send(`{"data": "pong", "pong": "${current2}"}`);
                 break;
 
             case "yeet":
-                try {
-                    removePlayer(res.id);
-                    ws.send(`{"data": "yeet"}`);
-                } catch {
-                    console.log("error when yeeting player");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to yeet"}`);
-                }
+                removePlayer(res.id);
+                ws.send(`{"data": "yeet"}`);
                 break;
 
             case "ping":
-                try {
-                    let player = playerLookup[res.id];
-                    if (player == null) return;
-                    let current = moment().valueOf();
-                    ws.send(`{"data": "pong", "pong": "${current}"}`);
+                let player = playerLookup[res.id];
+                if (player == null) return;
+                let current = moment().valueOf();
+                ws.send(`{"data": "pong", "pong": "${current}"}`);
 
-                    if (player.room != null) {
-                        player.room.playerPing(player, ((res.ping - player.lastPing) - 1000) * 2);
-                    }
-
-                    player.lastPing = res.ping;
-                    player.responding = true;
-                } catch {
-                    console.log("error when pinging player");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to ping"}`);
+                if (player.room != null) {
+                    player.room.playerPing(player, ((res.ping - player.lastPing) - 1000) * 2);
                 }
+
+                player.lastPing = res.ping;
+                player.responding = true;
                 break;
 
             case "makeRoom":
-                try {
-                    makeRoom(res.name, res.pass, res.id);
+                makeRoom(res.name, res.pass, res.id);
 
-                    /*players.forEach(player => {
-                        if (player.room == null) {
-                            player.ws.send(createRoomListJSON());
-                        }
-                    });*/
-                } catch {
-                    console.log("error when making room");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to make a room"}`);
-                }
+                /*players.forEach(player => {
+                    if (player.room == null) {
+                        player.ws.send(createRoomListJSON());
+                    }
+                });*/
                 break;
 
             case "updateRoom":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.updateRoom(res.name, res.pass, res.id);
-                    }
-                } catch {
-                    console.log("error when updating room");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to update the room"}`);
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.updateRoom(res.name, res.pass, res.id);
                 }
                 break;
 
             case "joinRoom":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        ws.send(`{"data": "error", "info":"already in a room"}`);
-                        return;
-                    }
-                    roomLookup[res.room].addPlayer(playerLookup[res.id], res.pass);
-                } catch {
-                    console.log("error when joining room");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to join a room"}`);
+                if (playerLookup[res.id].room != null) {
+                    ws.send(`{"data": "error", "info":"already in a room"}`);
+                    return;
                 }
+                roomLookup[res.room].addPlayer(playerLookup[res.id], res.pass);
                 break;
 
             case "leaveRoom":
-                try {
-                    leaveRoom(res.id);
-                    ws.send(createRoomListJSON());
-                } catch {
-                    console.log("error when leaving room");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to leave a room"}`);
-                }
+                leaveRoom(res.id);
+                ws.send(createRoomListJSON());
                 break;
 
             case "banPlayer":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.banPlayer(playerLookup[res.id], playerLookup[res.ban]);
-                    }
-                } catch {
-                    console.log("error when banning player");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to ban a player"}`);
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.banPlayer(playerLookup[res.id], playerLookup[res.ban]);
                 }
                 break;
 
             case "unbanPlayer":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.unbanPlayer(playerLookup[res.id], res.unban);
-                    }
-                } catch {
-                    console.log("error when unbanning");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to unban a player"}`);
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.unbanPlayer(playerLookup[res.id], res.unban);
                 }
                 break;
 
             case "switchHost":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.switchHost(playerLookup[res.id], playerLookup[res.newHost]);
-                    }
-                } catch {
-                    console.log("error when switching host");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to switch host"}`);
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.switchHost(playerLookup[res.id], playerLookup[res.newHost]);
                 }
                 break;
 
             case "getRooms":
-                try {
-                    ws.send(createRoomListJSON());
-                } catch {
-                    console.log("error when getting rooms");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to get the rooms"}`);
-                }
+                ws.send(createRoomListJSON());
                 break;
 
             case "switchScene":
-                try {
-                    playerLookup[res.id].scene = res.scene;
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.playerSwitchScene(playerLookup[res.id], res.scene);
-                    }
-                } catch {
-                    console.log("error when switching scene");
-                    console.log(res);
-                    ws.send(`{"data": "error", "info":"there was an error when trying to switch scene"}`);
+                playerLookup[res.id].scene = res.scene;
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.playerSwitchScene(playerLookup[res.id], res.scene);
                 }
                 break;
 
             case "updatePosition":
-                try {
-                    if (playerLookup[res.id].room != null) {
-                        playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.height, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
-                    }
-                } catch {
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.height, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
                 }
                 break;
         }
@@ -327,9 +252,10 @@ function addPlayer(ws, id, name, scene) {
 }
 
 function removePlayer(id) {
-    let player = playerLookup[id];
-
+    let player = findPlayerWithID(id);
+    
     if (player == null) {
+        console.log("player was null cant remove");
         return;
     }
 
@@ -615,9 +541,15 @@ async function consoleCommand() {
 
 consoleCommand();
 
+function findPlayerWithID(id) {
+    players.forEach(player => {
+        if (player.id == id) {
+            return player;
+        }
+    });
 
-
-
+    return null;
+}
 
 
 
