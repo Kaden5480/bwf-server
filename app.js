@@ -214,7 +214,7 @@ const checkForCrashed = setInterval(function() {
         let player = playersToRemove[i];
         if (player.room != null) {
             player.room.playerRemovedNotResponding(player);
-            leaveRoom(id);
+            leaveRoom(player.id);
         }
         console.log(`${player.name} removed for not responding`);
 
@@ -240,6 +240,7 @@ function addPlayer(ws, id, name, scene) {
         } else {
             console.log("reconnected player " + name + ", steam id: " + id);
             player.ws = ws;
+            player.responding = true;
 
             if (player.room != null) {
                 player.room.playerSwitchScene(player, scene);
