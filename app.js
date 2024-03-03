@@ -190,14 +190,14 @@ const checkForCrashed = setInterval(function() {
     let current = moment().valueOf();
     let playersToRemove = [];
 
-    console.log("Ping at " + current);
+    //console.log("Ping at " + current);
 
     players.forEach(player => {
         player.ws.send(`{"data": "pong", "pong": "${current}"}`);
         player.lastSentPing = current;
         //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
 
-        if (current - player.lastGotPing > 60000 && !player.responding) {
+        if (current - player.lastGotPing > 90000 && !player.responding) {
             playersToRemove.push(player);
         }
 
