@@ -3,4 +3,4 @@ download melonloader (nightly build, it has a fix not in stable yet): https://ni
 extract melonloader into the Peaks of Yore game folder (next to the exe)
 
 INSTALL PART 2 or MOD UPDATE:
-copy the folders next to this txt (Mods/ and UserLibs/) into the Peaks of Yore game folder (next to the exe)
+copy the folders next to this txt (Mods/ and Plugins/ and UserLibs/) into the Peaks of Yore game folder (next to the exe)
