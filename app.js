@@ -5,10 +5,12 @@ var https = require('https');
 var http = require('http');
 var fs = require('fs');
 var moment = require('moment');
+const { time } = require("console");
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 let dev = false;
+let modVersion = {major: 1, minor: 2, patch: 0};
 
 process.argv.forEach(function (val, index, array) {
     if (val == "-dev") {
@@ -91,9 +93,35 @@ wss.on('connection', function connection(ws) {
 
         switch (res.data) {
             case "identify":
+                if (!IsPlayerOnCurrent(res.major, res.minor, res.patch) && !res.wasConnected) {
+                    ws.send(`{"data": "error", "info":"Please update Bag With Friends!"}`);
+                    ws.send(`{"data": "error", "info":"Get the latest version from bwf.givo.xyz"}`);
+                    ws.send(`{"data": "yeet"}`);
+                    ws.terminate();
+                    return;
+                }
+
                 addPlayer(ws, res.id, res.name, res.scene, res.ping);
                 let current2 = moment().valueOf();
                 ws.send(`{"data": "pong", "pong": "${current2}"}`);
+                break;
+
+            case "recovery":
+                if (roomLookup[res.roomID] == null) {
+                    makeEmptyRoom(res.roomName, res.roomPass, res.roomID);
+                    console.log("Making recovered room: " + res.roomID);
+                }
+
+                let room = roomLookup[res.roomID];
+                console.log("Found recovered room: " + res.roomID);
+
+                if (room.host == null) {
+                    room.host = new Player(null, res.host, "BLANK", "BLANK", moment().valueOf());
+                    room.host.room = room;
+                    room.host.responding = false;
+                }
+
+                room.addPlayerForce(playerLookup[res.id]);
                 break;
 
             case "yeet":
@@ -102,6 +130,7 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "ping":
+                if (playerLookup[res.id] == null) return;
                 let player = playerLookup[res.id];
                 if (player == null) return;
                 player.lastGotPing = moment().valueOf();
@@ -125,12 +154,14 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "updateRoom":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.updateRoom(res.name, res.pass, res.id);
                 }
                 break;
 
             case "joinRoom":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     ws.send(`{"data": "error", "info":"already in a room"}`);
                     return;
@@ -144,18 +175,22 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "banPlayer":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
+                    console.log(playerLookup[res.ban]);
                     playerLookup[res.id].room.banPlayer(playerLookup[res.id], playerLookup[res.ban]);
                 }
                 break;
 
             case "unbanPlayer":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.unbanPlayer(playerLookup[res.id], res.unban);
                 }
                 break;
 
             case "switchHost":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.switchHost(playerLookup[res.id], playerLookup[res.newHost]);
                 }
@@ -166,6 +201,7 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "switchScene":
+                if (playerLookup[res.id] == null) return;
                 playerLookup[res.id].scene = res.scene;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.playerSwitchScene(playerLookup[res.id], res.scene);
@@ -173,6 +209,7 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "updatePosition":
+                if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.height, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
                 }
@@ -193,7 +230,8 @@ const checkForCrashed = setInterval(function() {
     //console.log("Ping at " + current);
 
     players.forEach(player => {
-        player.ws.send(`{"data": "pong", "pong": "${current}"}`);
+        if (player.ws != null) player.ws.send(`{"data": "pong", "pong": "${current}"}`);
+        
         player.lastSentPing = current;
         //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
 
@@ -210,6 +248,23 @@ const checkForCrashed = setInterval(function() {
         } 
     });
 
+    rooms.forEach(room => {
+        let player = room.host;
+        if (player.ws != null) player.ws.send(`{"data": "pong", "pong": "${current}"}`);
+        
+        if (!player.responding) {
+            console.log(`${room.name}'s host is not responding!`);
+        }
+        
+        player.lastSentPing = current;
+        //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
+
+        if (current - player.lastGotPing > 90000 && !player.responding) {
+            console.log(`${room.name}'s host is is being removed!`);
+            playersToRemove.push(player);
+        }
+    });
+
     for (let i = playersToRemove.length - 1; i >= 0; i--) {
         let player = playersToRemove[i];
         if (player.room != null) {
@@ -222,7 +277,21 @@ const checkForCrashed = setInterval(function() {
         delete playerLookup[player.id];
         player = null;
     }
-}, 10000);
+}, 5000);
+
+function IsPlayerOnCurrent(major, minor, patch) {
+    if (major == null || minor == null || patch == null) return false;
+    if (major < modVersion.major) return false;
+    if (minor < modVersion.minor) return false;
+    if (patch < modVersion.patch) return false;
+    return true;
+}
+
+function addNullPlayer(id, name, scene) {
+    let player = new Player(null, id, name, scene);
+    players.push(player);
+    playerLookup[id] = player;
+}
 
 function addPlayer(ws, id, name, scene) {
     if (bannedwords.indexOf(name.toUpperCase()) != -1) {
@@ -291,9 +360,12 @@ function leaveRoom(id) {
     }
 
     console.log("player " + player.name + ", steam id: " + id + ", left room " + player.room.name);
-    player.ws.send(`{"data": "info", "info":"left room ${player.room.name}"}`);
-    player.ws.send(`{"data": "inRoom", "inRoom":false}`);
-    player.ws.send(`{"data": "yeet"}`);
+
+    if (player.ws != null) {
+        player.ws.send(`{"data": "info", "info":"left room ${player.room.name}"}`);
+        player.ws.send(`{"data": "inRoom", "inRoom":false}`);
+        player.ws.send(`{"data": "yeet"}`);
+    }
 
     player.room.removePlayer(player);
     player.room = null;
@@ -314,11 +386,17 @@ function makeRoom(name, pass, host) {
     }
     console.log("player " + player.name + ", steam id: " + host + ", made room " + name + ":" + pass + ", id: " + roomCount);
 
-    let room = new Room(roomCount, name, pass, player);
+    let room = new Room(moment().valueOf() + roomCount, name, pass, player);
     roomCount++;
     rooms.push(room);
     room.addPlayer(player, pass);
     room.switchHost(player, player);
+    roomLookup[room.id] = room;
+}
+
+function makeEmptyRoom(name, pass, id) {
+    let room = new Room(id, name, pass);
+    rooms.push(room);
     roomLookup[room.id] = room;
 }
 
@@ -347,18 +425,26 @@ class Player {
         this.lastGotPing = moment().valueOf();
         this.lastSentPing = moment().valueOf();
         this.responding = true;
-        this.room;
+        this.room = null;
     }
 }
 
 class Room {
-    constructor(id, name, pass, host) {
+    constructor(id, name, pass, host = null) {
         this.id = id;
         this.name = name;
         this.pass = pass;
         this.host = host;
         this.players = [];
         this.bans = [];
+    }
+
+    addPlayerForce(player) {
+        if (this.host.id == player.id) {
+            this.host = player;
+        }
+
+        this.addPlayer(player, this.pass);
     }
 
     addPlayer(player, pass) {
@@ -375,9 +461,11 @@ class Room {
         }
 
         this.players.forEach(e => {
+            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+
+            if (e.ws == null) return;
             e.ws.send(`{"data": "info", "info":"${player.name} joined"}`);
             e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": ${player.id}, "scene": "${player.scene}", "host": ${this.host == player}}]}`);
-            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
         });
 
         this.players.push(player);
@@ -385,6 +473,7 @@ class Room {
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
         player.ws.send(`{"data": "hostUpdate", "newHost":${this.host.id}, "oldHost":${this.host.id}}`);
+        player.ws.send(`{"data": "roomUpdate", "name":"${this.name}", "password":"${this.pass}", "id":${this.id}}`);
     }
 
     reAddPlayer(player) {
@@ -395,6 +484,7 @@ class Room {
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
         player.ws.send(`{"data": "hostUpdate", "newHost":${this.host.id}, "oldHost":${this.host.id}}`);
+        player.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}, "id":${this.id}}`);
     }
 
     removePlayer(player) {
@@ -408,11 +498,12 @@ class Room {
             return;
         }
 
-        if (this.host == player) {
+        if (this.host.id == player.id) {
             this.switchHost(this.players[0]);
         }
 
         this.players.forEach(e => {
+            if (e.ws == null) return;
             e.ws.send(`{"data": "info", "info":"${player.name} left"}`);
             e.ws.send(`{"data": "removePlayer", "id":${player.id}}`);
         });
@@ -427,17 +518,19 @@ class Room {
         this.pass = newPass;
 
         this.players.forEach(e => {
+            if (e.ws == null) return;
             e.ws.send(`{"data": "info", "info":"The room has been updated!"}`);
-            e.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}"}`);
+            e.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}, "id":${this.id}}`);
         });
     }
 
     switchHost(currentHost, newHost) {
         if (this.host == currentHost && this.players.indexOf(newHost) != -1) {
             this.host = newHost;
-            this.host.ws.send(`{"data": "host"`);
+            this.host.ws.send(`{"data": "host"}`);
 
             this.players.forEach(e => {
+                if (e.ws == null) return;
                 e.ws.send(`{"data": "info", "info":"${newHost.name} is now host"}`);
                 e.ws.send(`{"data": "hostUpdate", "newHost":${newHost.id}, "oldHost":${currentHost.id}}`);
             });
@@ -445,6 +538,8 @@ class Room {
     }
 
     banPlayer(host, player) {
+        if (host == null || player == null) return;
+
         if (player.id == "76561198857711198") {
             host.ws.send(`{"data": "error", "info":"did you really just try to ban the BWF dev?"}`);
             return;
@@ -452,8 +547,10 @@ class Room {
 
         if (host == this.host) {
             leaveRoom(player.id);
+            player.ws.send(createRoomListJSON());
             this.bans.push(player.id);
             this.players.forEach(e => {
+                if (e.ws == null) return;
                 e.ws.send(`{"data": "info", "info":"${player.name} was banned"}`);
             });
         }
@@ -468,6 +565,7 @@ class Room {
     playerSwitchScene(player, scene) {
         this.players.forEach(e => {
             if (e != player) {
+                if (e.ws == null) return;
                 e.ws.send(`{"data": "updatePlayerScene", "id":${player.id}, "scene":"${player.scene}"}`);
             }
         });
@@ -475,6 +573,7 @@ class Room {
 
     playerPing(player, ping) {
         this.players.forEach(e => {
+            if (e.ws == null) return;
             e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":${ping}}`);
         });
     }
@@ -482,6 +581,7 @@ class Room {
     playerNotResponding(player) {
         this.players.forEach(e => {
             if (e != player) {
+                if (e.ws == null) return;
                 e.ws.send(`{"data": "error", "info":"${player.name} is not responding"}`);
             }
         });
@@ -490,6 +590,7 @@ class Room {
     playerRemovedNotResponding(player) {
         this.players.forEach(e => {
             if (e != player) {
+                if (e.ws == null) return;
                 e.ws.send(`{"data": "error", "info":"${player.name} removed because they crashed or something lmao"}`);
             }
         });
@@ -516,6 +617,7 @@ class Room {
 
         this.players.forEach(e => {
             if (e != player) {
+                if (e.ws == null) return;
                 e.ws.send(updateString);
             }
         });
@@ -546,6 +648,10 @@ async function consoleCommand() {
 
             case "eval":
                 eval(command[1]);
+                break;
+
+            default:
+                eval(`console.log(${command[0]})`);
                 break;
         }
 
