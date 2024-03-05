@@ -10,7 +10,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 let dev = false;
-let modVersion = {major: 1, minor: 2, patch: 1};
+let modVersion = {major: 1, minor: 2, patch: 2};
 
 process.argv.forEach(function (val, index, array) {
     if (val == "-dev") {
