@@ -10,7 +10,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 let dev = false;
-let modVersion = {major: 1, minor: 2, patch: 2};
+let modVersion = {major: 1, minor: 2, patch: 3};
 
 process.argv.forEach(function (val, index, array) {
     if (val == "-dev") {
@@ -91,6 +91,11 @@ wss.on('connection', function connection(ws) {
             ws.close();
         }
 
+        let player = playerLookup[res.id];
+        if (player != null) {
+            player.lastGotPing = moment().valueOf();
+        }
+
         switch (res.data) {
             case "identify":
                 if (!IsPlayerOnCurrent(res.major, res.minor, res.patch) && !res.wasConnected) {
@@ -127,6 +132,13 @@ wss.on('connection', function connection(ws) {
             case "yeet":
                 removePlayer(res.id);
                 ws.send(`{"data": "yeet"}`);
+                break;
+
+            case "summit":
+                if (playerLookup[res.id] == null) return;
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.playerSummit(res.id, res.scene);
+                }
                 break;
 
             case "ping":
@@ -302,21 +314,15 @@ function addPlayer(ws, id, name, scene) {
 
     if (playerLookup[id] != null) {
         let player = playerLookup[id];
-        if (player.responding) {
-            console.log("duplicate player " + name + ", steam id: " + id);
-            ws.terminate();
-            return;
-        } else {
-            console.log("reconnected player " + name + ", steam id: " + id);
-            player.ws = ws;
-            player.responding = true;
+        console.log("reconnected player " + name + ", steam id: " + id);
+        player.ws = ws;
+        player.responding = true;
 
-            if (player.room != null) {
-                player.room.playerSwitchScene(player, scene);
-                player.room.reAddPlayer(player);
-            }
-            return;
+        if (player.room != null) {
+            player.room.playerSwitchScene(player, scene);
+            player.room.reAddPlayer(player);
         }
+        return;
     }
 
     if (id == "76561198857711198") {
@@ -495,11 +501,16 @@ class Room {
             delete roomLookup[this.id];
 
             console.log("room " + this.name + ", id: " + this.id + ", remove because empty");
+
+            players.forEach(e => {
+                if (e.ws == null) return;
+                e.ws.send(createRoomListJSON());
+            });
             return;
         }
 
         if (this.host.id == player.id) {
-            this.switchHost(this.players[0]);
+            this.switchHost(this.host, this.players[0]);
         }
 
         this.players.forEach(e => {
@@ -568,6 +579,13 @@ class Room {
                 if (e.ws == null) return;
                 e.ws.send(`{"data": "updatePlayerScene", "id":${player.id}, "scene":"${player.scene}"}`);
             }
+        });
+    }
+
+    playerSummit(player, scene) {
+        this.players.forEach(e => {
+            if (e.ws == null) return;
+            e.ws.send(`{"data": "summit", "id":${player}, "scene":"${scene}"}`);
         });
     }
 
