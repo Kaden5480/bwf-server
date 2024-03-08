@@ -189,7 +189,6 @@ wss.on('connection', function connection(ws) {
             case "banPlayer":
                 if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
-                    console.log(playerLookup[res.ban]);
                     playerLookup[res.id].room.banPlayer(playerLookup[res.id], playerLookup[res.ban]);
                 }
                 break;
@@ -490,7 +489,7 @@ class Room {
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
         player.ws.send(`{"data": "hostUpdate", "newHost":${this.host.id}, "oldHost":${this.host.id}}`);
-        player.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}, "id":${this.id}}`);
+        player.ws.send(`{"data": "roomUpdate", "name":"${this.name}", "password":"${this.pass}, "id":${this.id}}`);
     }
 
     removePlayer(player) {
