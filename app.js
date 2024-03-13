@@ -261,7 +261,7 @@ const checkForCrashed = setInterval(function() {
 
     rooms.forEach(room => {
         let player = room.host;
-        if (player.ws != null) player.ws.send(`{"data": "pong", "pong": "${current}"}`);
+        if (player.ws != null) return;
         
         if (!player.responding) {
             console.log(`${room.name}'s host is not responding!`);
@@ -270,7 +270,7 @@ const checkForCrashed = setInterval(function() {
         player.lastSentPing = current;
         //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
 
-        if (current - player.lastGotPing > 90000 && !player.responding) {
+        if (current - player.lastGotPing > 90000 && player.ws == null) {
             console.log(`${room.name}'s host is is being removed!`);
             playersToRemove.push(player);
         }
@@ -288,7 +288,7 @@ const checkForCrashed = setInterval(function() {
         delete playerLookup[player.id];
         player = null;
     }
-}, 5000);
+}, 1000);
 
 function IsPlayerOnCurrent(major, minor, patch) {
     if (major == null || minor == null || patch == null) return false;
@@ -359,7 +359,7 @@ function leaveRoom(id) {
     let player = playerLookup[id];
 
     if (player.room == null) {
-        player.ws.send(`{"data": "error", "info":"not in a room"}`);
+        if (player.ws != null) player.ws.send(`{"data": "error", "info":"not in a room"}`);
 
         return;
     }
@@ -500,11 +500,6 @@ class Room {
             delete roomLookup[this.id];
 
             console.log("room " + this.name + ", id: " + this.id + ", remove because empty");
-
-            players.forEach(e => {
-                if (e.ws == null) return;
-                e.ws.send(createRoomListJSON());
-            });
             return;
         }
 
