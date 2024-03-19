@@ -8,13 +8,18 @@ var moment = require('moment');
 const { time } = require("console");
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
+require('console-stamp')(console, 'HH:MM:ss.l');
 
 let dev = false;
-let modVersion = {major: 1, minor: 2, patch: 4};
+let stress = false;
+let modVersion = {major: 1, minor: 3, patch: 0};
 
 process.argv.forEach(function (val, index, array) {
     if (val == "-dev") {
         dev = true;
+    }
+    if (val == "-stress") {
+        stress = true;
     }
 });
 
@@ -141,6 +146,15 @@ wss.on('connection', function connection(ws) {
                 }
                 break;
 
+            case "changeColor":
+                if (playerLookup[res.id] == null) return;
+                playerLookup[res.id].color = res.color;
+
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.playerChangeColor(res.id, res.color);
+                }
+                break;
+
             case "ping":
                 if (playerLookup[res.id] == null) return;
                 let player = playerLookup[res.id];
@@ -156,7 +170,7 @@ wss.on('connection', function connection(ws) {
                 break;
 
             case "makeRoom":
-                makeRoom(res.name, res.pass, res.id);
+                makeRoom(res.name, res.pass, res.id, res.hash, res.hash2);
 
                 /*players.forEach(player => {
                     if (player.room == null) {
@@ -178,7 +192,11 @@ wss.on('connection', function connection(ws) {
                     ws.send(`{"data": "error", "info":"already in a room"}`);
                     return;
                 }
-                roomLookup[res.room].addPlayer(playerLookup[res.id], res.pass);
+                if (roomLookup[res.room] == null) {
+                    ws.send(`{"data": "error", "info":"room does not exist anymore!"}`);
+                    return;
+                }
+                roomLookup[res.room].addPlayer(playerLookup[res.id], res.pass, res.hash, res.hash2);
                 break;
 
             case "leaveRoom":
@@ -240,44 +258,36 @@ const checkForCrashed = setInterval(function() {
 
     //console.log("Ping at " + current);
 
-    players.forEach(player => {
-        if (player.ws != null) player.ws.send(`{"data": "pong", "pong": "${current}"}`);
+    for (let i = 0; i < players.length; i++) {
+        if (players[i].ws != null) players[i].ws.send(`{"data": "pong", "pong": "${current}"}`);
         
-        player.lastSentPing = current;
-        //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
+        players[i].lastSentPing = current;
+        //console.log(`${players[i].name}: ${current-players[i].lastPing}, ${players[i].responding}`);
 
-        if (current - player.lastGotPing > 90000 && !player.responding) {
-            playersToRemove.push(player);
+        if (current - players[i].lastGotPing > 30000 && !players[i].responding) {
+            console.log(`${players[i].name} is being removed`);
+            playersToRemove.push(players[i]);
         }
 
-        if (current - player.lastGotPing > 30000 && player.responding) {
-            console.log(`${player.name} is not responding`);
-            player.responding = false;
-            if (player.room != null) {
-                player.room.playerNotResponding(player);
+        if (current - players[i].lastGotPing > 15000 && players[i].responding) {
+            console.log(`${players[i].name} is not responding`);
+            players[i].responding = false;
+            if (players[i].room != null) {
+                players[i].room.playerNotResponding(players[i]);
             }
         } 
-    });
+    }
 
-    rooms.forEach(room => {
-        let player = room.host;
-        if (player.ws != null) return;
-        
-        if (!player.responding) {
-            console.log(`${room.name}'s host is not responding!`);
-        }
-        
-        player.lastSentPing = current;
-        //console.log(`${player.name}: ${current-player.lastPing}, ${player.responding}`);
-
-        if (current - player.lastGotPing > 90000 && player.ws == null) {
-            console.log(`${room.name}'s host is is being removed!`);
+    for (let i = 0; i < rooms.length; i++) {
+        if (rooms[i].host.ws == null && current - player.lastGotPing > 60000) {
+            console.log(`${rooms[i].name}'s host is is being removed!`);
             playersToRemove.push(player);
         }
-    });
-
+    }
+    
     for (let i = playersToRemove.length - 1; i >= 0; i--) {
         let player = playersToRemove[i];
+        console.log(`${player.name} not responding`);
         if (player.room != null) {
             player.room.playerRemovedNotResponding(player);
             leaveRoom(player.id);
@@ -376,7 +386,7 @@ function leaveRoom(id) {
     player.room = null;
 }
 
-function makeRoom(name, pass, host) {
+function makeRoom(name, pass, host, hash, hash2) {
     let player = playerLookup[host];
 
     if (bannedwords.indexOf(name.toUpperCase()) != -1) {
@@ -389,7 +399,7 @@ function makeRoom(name, pass, host) {
         player.ws.send(`{"data": "error", "info":"already in a room"}`);
         return;
     }
-    console.log("player " + player.name + ", steam id: " + host + ", made room " + name + ":" + pass + ", id: " + roomCount);
+    console.log("player " + player.name + ", steam id: " + host + ", made room " + name + ":" + pass + ", id: " + (moment().valueOf() + roomCount));
 
     let room = new Room(moment().valueOf() + roomCount, name, pass, player);
     roomCount++;
@@ -397,6 +407,11 @@ function makeRoom(name, pass, host) {
     room.addPlayer(player, pass);
     room.switchHost(player, player);
     roomLookup[room.id] = room;
+    room.hash = hash;
+    room.hash2 = hash2;
+
+    console.log("room hash: " + hash);
+    console.log("room hash2: " + hash2);
 }
 
 function makeEmptyRoom(name, pass, id) {
@@ -427,6 +442,7 @@ class Player {
         this.id = id;
         this.name = name;
         this.scene = scene;
+        this.color = [1, 1, 1, 1];
         this.lastGotPing = moment().valueOf();
         this.lastSentPing = moment().valueOf();
         this.responding = true;
@@ -440,6 +456,8 @@ class Room {
         this.name = name;
         this.pass = pass;
         this.host = host;
+        this.hash = "no";
+        this.hash2 = "no";
         this.players = [];
         this.bans = [];
     }
@@ -452,7 +470,7 @@ class Room {
         this.addPlayer(player, this.pass);
     }
 
-    addPlayer(player, pass) {
+    addPlayer(player, pass, hash, hash2) {
         if (this.bans.indexOf(player.id) != -1) {
             player.ws.send(`{"data": "error", "info":"banned"}`);
 
@@ -465,13 +483,20 @@ class Room {
             return;
         }
 
-        this.players.forEach(e => {
-            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
+        if (this.hash != "no" && this.hash != hash || this.hash2 != "no" && this.hash2 != hash2) {
+            player.ws.send(`{"data": "error", "info":"game version mismatch with host!"}`);
+            this.playerCallout(player);
+            return;
+        }
+
+        for (let i = 0; i < this.players.length; i++) {
+            var e = this.players[i];
+            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}], "color":["${player.color[0]}", "${player.color[1]}", "${player.color[2]}", "${player.color[3]}"]}`);
 
             if (e.ws == null) return;
             e.ws.send(`{"data": "info", "info":"${player.name} joined"}`);
-            e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": ${player.id}, "scene": "${player.scene}", "host": ${this.host == player}}]}`);
-        });
+            e.ws.send(`{"data": "addPlayer", "player":[{"name": "${player.name}", "id": ${player.id}, "scene": "${player.scene}", "host": ${this.host == player}}], "color":["${player.color[0]}", "${player.color[1]}", "${player.color[2]}", "${player.color[3]}"]}`);
+        }
 
         this.players.push(player);
         player.room = this;
@@ -482,9 +507,10 @@ class Room {
     }
 
     reAddPlayer(player) {
-        this.players.forEach(e => {
-            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}]}`);
-        });
+        for (let i = 0; i < this.players.length; i++) {
+            var e = this.players[i];
+            player.ws.send(`{"data": "addPlayer", "player":[{"name": "${e.name}", "id": ${e.id}, "scene": "${e.scene}", "host": ${this.host == e}}], "color":["${player.color[0]}", "${player.color[1]}", "${player.color[2]}", "${player.color[3]}"]}`);
+        }
 
         player.ws.send(`{"data": "info", "info":"joined room ${this.name}"}`);
         player.ws.send(`{"data": "inRoom", "inRoom":true}`);
@@ -507,11 +533,12 @@ class Room {
             this.switchHost(this.host, this.players[0]);
         }
 
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e.ws == null) return;
             e.ws.send(`{"data": "info", "info":"${player.name} left"}`);
             e.ws.send(`{"data": "removePlayer", "id":${player.id}}`);
-        });
+        }
     }
 
     updateRoom(newName, newPass, player) {
@@ -522,11 +549,11 @@ class Room {
         this.name = newName;
         this.pass = newPass;
 
-        this.players.forEach(e => {
-            if (e.ws == null) return;
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             e.ws.send(`{"data": "info", "info":"The room has been updated!"}`);
             e.ws.send(`{"data": "roomUpdate", "name":"${newName}", "password":"${newPass}, "id":${this.id}}`);
-        });
+        }
     }
 
     switchHost(currentHost, newHost) {
@@ -534,11 +561,12 @@ class Room {
             this.host = newHost;
             this.host.ws.send(`{"data": "host"}`);
 
-            this.players.forEach(e => {
+            for (let i = 0; i < this.players.length; i++) {
+                let e = this.players[i];
                 if (e.ws == null) return;
                 e.ws.send(`{"data": "info", "info":"${newHost.name} is now host"}`);
                 e.ws.send(`{"data": "hostUpdate", "newHost":${newHost.id}, "oldHost":${currentHost.id}}`);
-            });
+            }
         }
     }
 
@@ -554,10 +582,11 @@ class Room {
             leaveRoom(player.id);
             player.ws.send(createRoomListJSON());
             this.bans.push(player.id);
-            this.players.forEach(e => {
-                if (e.ws == null) return;
+
+            for (let i = 0; i < this.players.length; i++) {
+                let e = this.players[i];
                 e.ws.send(`{"data": "info", "info":"${player.name} was banned"}`);
-            });
+            }
         }
     }
 
@@ -568,44 +597,67 @@ class Room {
     }
 
     playerSwitchScene(player, scene) {
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e != player) {
                 if (e.ws == null) return;
                 e.ws.send(`{"data": "updatePlayerScene", "id":${player.id}, "scene":"${player.scene}"}`);
             }
-        });
+        }
     }
 
     playerSummit(player, scene) {
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e.ws == null) return;
             e.ws.send(`{"data": "summit", "id":${player}, "scene":"${scene}"}`);
-        });
+        }
+    }
+
+    playerChangeColor(player, color) {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
+            if (e != player) {
+                if (e.ws == null) return;
+                e.ws.send(`{"data": "changeColor", "id":${player}, "color":["${color[0]}", "${color[1]}", "${color[2]}", "${color[3]}"]}`);
+            }
+        }
     }
 
     playerPing(player, ping) {
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e.ws == null) return;
             e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":${ping}}`);
-        });
+        }
+    }
+
+    playerCallout(player) {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
+            if (e.ws == null) return;
+            e.ws.send(`{"data": "error", "info":"${player.name} tried to join with an outdated or modified client!"}`);
+        }
     }
 
     playerNotResponding(player) {
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e != player) {
                 if (e.ws == null) return;
                 e.ws.send(`{"data": "error", "info":"${player.name} is not responding"}`);
             }
-        });
+        }
     }
     
     playerRemovedNotResponding(player) {
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e != player) {
                 if (e.ws == null) return;
                 e.ws.send(`{"data": "error", "info":"${player.name} removed because they crashed or something lmao"}`);
             }
-        });
+        }
     }
 
     playerUpdatePosition(player, newPosition, newHeight, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
@@ -627,12 +679,13 @@ class Room {
             `"footRRotation":["${newFootRrot[0]}", "${newFootRrot[1]}", "${newFootRrot[2]}", "${newFootRrot[3]}"]` +
             `}`;
 
-        this.players.forEach(e => {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
             if (e != player) {
                 if (e.ws == null) return;
                 e.ws.send(updateString);
             }
-        });
+        }
     }
 }
 
