@@ -103,7 +103,7 @@ wss.on('connection', function connection(ws) {
 
         switch (res.data) {
             case "identify":
-                if (!IsPlayerOnCurrent(res.major, res.minor, res.patch) && !res.wasConnected) {
+                if (!IsPlayerOnCurrent(res.major, res.minor, res.patch) && !res.wasConnected || bannedPlayers.indexOf(res.id) != -1) {
                     ws.send(`{"data": "error", "info":"Please update Bag With Friends!"}`);
                     ws.send(`{"data": "error", "info":"Get the latest version from bwf.givo.xyz"}`);
                     ws.send(`{"data": "yeet"}`);
@@ -143,6 +143,21 @@ wss.on('connection', function connection(ws) {
                 if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.playerSummit(res.id, res.scene);
+                }
+                break;
+
+            case "updateName":
+                if (playerLookup[res.id] == null) return;
+                playerLookup[res.id].name = res.newName;
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.playerNewName(playerLookup[res.id]);
+                }
+                break;
+
+            case "sendToEveryone":
+                if (playerLookup[res.id] == null) return;
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.sendToEveryone(playerLookup[res.id], res.type, res.message);
                 }
                 break;
 
@@ -240,7 +255,7 @@ wss.on('connection', function connection(ws) {
             case "updatePosition":
                 if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
-                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.position, res.height, res.handL, res.handR, res.armStrechL, res.armStrechR, res.footL, res.footR, res.footLBend, res.footRBend, res.rotation, res.handLRotation, res.handRRotation, res.footLRotation, res.footRRotation);
+                    playerLookup[res.id].room.playerUpdatePosition(playerLookup[res.id], res.update);
                 }
                 break;
         }
@@ -614,6 +629,23 @@ class Room {
         }
     }
 
+    playerNewName(player) {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
+            if (e.ws == null) return;
+            e.ws.send(`{"data": "playerNewName", "id":${player.id}, "newName":"${player.name}"}`);
+        }
+    }
+
+    sendToEveryone(player, info, message) {
+        for (let i = 0; i < this.players.length; i++) {
+            let e = this.players[i];
+            if (e.ws == null) return;
+            e.ws.send(`{"data": "${info ? "info" : "error"}", "info":"${player.name} ${message}" }`);
+        }
+        console.log(`${player.name}:${player.id} ${message}`);
+    }
+
     playerChangeColor(player, color) {
         for (let i = 0; i < this.players.length; i++) {
             let e = this.players[i];
@@ -638,6 +670,7 @@ class Room {
             if (e.ws == null) return;
             e.ws.send(`{"data": "error", "info":"${player.name} tried to join with an outdated or modified client!"}`);
         }
+        console.log(`${player.name}:${player.id} tried to join with an outdated or modified client!`);
     }
 
     playerNotResponding(player) {
@@ -660,8 +693,8 @@ class Room {
         }
     }
 
-    playerUpdatePosition(player, newPosition, newHeight, newHandL, newHandR, newArmStrechL, newArmStrechR, newFootL, newFootR, newFootLBend, newFootRBend, newRotation, newHandLrot, newHandRrot, newFootLrot, newFootRrot) {
-        let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
+    playerUpdatePosition(player, update) {
+        /*let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
             `"height":"${newHeight}", ` +
             `"position":["${newPosition[0]}", "${newPosition[1]}", "${newPosition[2]}"], ` +
             `"handL":["${newHandL[0]}", "${newHandL[1]}", "${newHandL[2]}"], ` +
@@ -677,13 +710,13 @@ class Room {
             `"handRRotation":["${newHandRrot[0]}", "${newHandRrot[1]}", "${newHandRrot[2]}", "${newHandRrot[3]}"], ` +
             `"footLRotation":["${newFootLrot[0]}", "${newFootLrot[1]}", "${newFootLrot[2]}", "${newFootLrot[3]}"], ` +
             `"footRRotation":["${newFootRrot[0]}", "${newFootRrot[1]}", "${newFootRrot[2]}", "${newFootRrot[3]}"]` +
-            `}`;
+            `}`;*/
 
         for (let i = 0; i < this.players.length; i++) {
             let e = this.players[i];
             if (e != player) {
                 if (e.ws == null) return;
-                e.ws.send(updateString);
+                e.ws.send(update);
             }
         }
     }
@@ -738,10 +771,7 @@ function findPlayerWithID(id) {
     return null;
 }
 
-
-
-
-
+var bannedPlayers = ["76561198120461543"];
 
 
 
