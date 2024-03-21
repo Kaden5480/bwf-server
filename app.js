@@ -111,7 +111,7 @@ wss.on('connection', function connection(ws) {
                     return;
                 }
 
-                addPlayer(ws, res.id, res.name, res.scene, res.ping);
+                addPlayer(ws, res.id, res.CoC, res.name, res.scene, res.ping);
                 let current2 = moment().valueOf();
                 ws.send(`{"data": "pong", "pong": "${current2}"}`);
                 break;
@@ -143,6 +143,13 @@ wss.on('connection', function connection(ws) {
                 if (playerLookup[res.id] == null) return;
                 if (playerLookup[res.id].room != null) {
                     playerLookup[res.id].room.playerSummit(res.id, res.scene);
+                }
+                break;
+
+            case "freeze":
+                if (playerLookup[res.id] == null) return;
+                if (playerLookup[res.id].room != null) {
+                    playerLookup[res.id].room.freezePlayers(playerLookup[res.id], res.freeze);
                 }
                 break;
 
@@ -329,7 +336,7 @@ function addNullPlayer(id, name, scene) {
     playerLookup[id] = player;
 }
 
-function addPlayer(ws, id, name, scene) {
+function addPlayer(ws, id, CoC, name, scene) {
     if (bannedwords.indexOf(name.toUpperCase()) != -1) {
         ws.send(`{"data": "error", "info":"change your steam name"}`);
         ws.terminate();
@@ -357,6 +364,7 @@ function addPlayer(ws, id, name, scene) {
     ws.send(`{"data": "info", "info":"you connected as ${name}"}`);
 
     let player = new Player(ws, id, name, scene);
+    player.compOrCaster = CoC;
     players.push(player);
     playerLookup[id] = player;
 }
@@ -457,6 +465,7 @@ class Player {
         this.id = id;
         this.name = name;
         this.scene = scene;
+        this.compOrCaster = false;
         this.color = [1, 1, 1, 1];
         this.lastGotPing = moment().valueOf();
         this.lastSentPing = moment().valueOf();
@@ -494,13 +503,17 @@ class Room {
 
         if (pass != this.pass && player.id != "76561198857711198") {
             player.ws.send(`{"data": "error", "info":"incorrect password"}`);
-
             return;
         }
 
         if (this.hash != "no" && this.hash != hash || this.hash2 != "no" && this.hash2 != hash2) {
             player.ws.send(`{"data": "error", "info":"game version mismatch with host!"}`);
             this.playerCallout(player);
+            return;
+        }
+
+        if (this.host.compOrCaster != 0 && player.compOrCaster == 0) {
+            player.ws.send(`{"data": "error", "info":"Not in Comp or Caster mode!"}`);
             return;
         }
 
@@ -661,6 +674,16 @@ class Room {
             let e = this.players[i];
             if (e.ws == null) return;
             e.ws.send(`{"data": "updatePlayerPing", "id":${player.id}, "ping":${ping}}`);
+        }
+    }
+
+    freezePlayers(player, freeze) {
+        if (player.compOrCaster == 2) {
+            for (let i = 0; i < this.players.length; i++) {
+                let e = this.players[i];
+                if (e.ws == null) return;
+                e.ws.send(`{"data": "freeze", "freeze":${freeze ? 1 : 0}}`);
+            }
         }
     }
 
