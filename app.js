@@ -84,7 +84,7 @@ wss.on('connection', function connection(ws) {
     ws.on('message', function message(data) {
         let res = JSON.parse(data);
 
-        if (res.data != "updatePosition" && res.data != "ping") {
+        if (res.data != "updatePosition" && res.data != "ping" && res.data != "changeColor") {
             if (logging == 0) {
                 console.log("got command " + res.data);
             } else if (logging == 1) {
