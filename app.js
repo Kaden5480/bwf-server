@@ -53,8 +53,8 @@ const wss = new WebSocketServer({
         zlibDeflateOptions: {
             // See zlib defaults.
             chunkSize: 1024,
-            memLevel: 7,
-            level: 3
+            memLevel: 5,
+            level: 10
         },
         zlibInflateOptions: {
             chunkSize: 10 * 1024
@@ -78,17 +78,15 @@ let roomLookup = [];
 let roomCount = 0;
 let logging = 0;
 
-wss.on('connection', function connection(ws) {
+wss.on('connection', async function connection(ws) {
     ws.on('error', console.error);
 
-    ws.on('message', function message(data) {
-        let res = JSON.parse(data);
-
+    ws.on('message', async function message(data) {
         if (res.data != "updatePosition" && res.data != "ping" && res.data != "changeColor") {
             if (logging == 0) {
-                console.log("got command " + res.data);
+                //console.log("got command " + res.data);
             } else if (logging == 1) {
-                console.log(res);
+                //console.log(res);
             }
         }
 
@@ -716,7 +714,7 @@ class Room {
         }
     }
 
-    playerUpdatePosition(player, update) {
+    async playerUpdatePosition(player, update) {
         /*let updateString = `{"data": "updatePlayerPosition", "id":${player.id}, ` +
             `"height":"${newHeight}", ` +
             `"position":["${newPosition[0]}", "${newPosition[1]}", "${newPosition[2]}"], ` +
