@@ -792,7 +792,7 @@ function findPlayerWithID(id) {
     return null;
 }
 
-var bannedPlayers = ["76561198120461543"];
+var bannedPlayers = ["76561198120461543", "76561199056074925"];
 
 
 
