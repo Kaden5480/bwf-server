@@ -1,8 +1,5 @@
 const { WebSocketServer } = require("ws");
 const readline = require("readline");
-var express = require('express');
-var https = require('https');
-var http = require('http');
 var fs = require('fs');
 var moment = require('moment');
 const { time } = require("console");
@@ -24,28 +21,6 @@ process.argv.forEach(function (val, index, array) {
 });
 
 console.log("dev: " + dev)
-
-var app = express();
-
-if (!dev) {
-    http.createServer(function (req, res) {
-        res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
-        res.end();
-    }).listen(80);
-
-    https.createServer({
-        key: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/privkey.pem"),
-        cert: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/fullchain.pem"),
-        ca: fs.readFileSync("/etc/letsencrypt/live/bwf.givo.xyz/chain.pem")
-    }, app).listen(443);
-} else {
-    http.createServer(app).listen(80);
-}
-
-app.use(express.static('public'));
-app.get('/', (req, res) => {
-    res.send("Server Up")
-});
 
 const wss = new WebSocketServer({
     port: 3000,
@@ -282,7 +257,7 @@ const checkForCrashed = setInterval(function() {
 
     for (let i = 0; i < players.length; i++) {
         if (players[i].ws != null) players[i].ws.send(`{"data": "pong", "pong": "${current}"}`);
-        
+
         players[i].lastSentPing = current;
         //console.log(`${players[i].name}: ${current-players[i].lastPing}, ${players[i].responding}`);
 
@@ -297,7 +272,7 @@ const checkForCrashed = setInterval(function() {
             if (players[i].room != null) {
                 players[i].room.playerNotResponding(players[i]);
             }
-        } 
+        }
     }
 
     for (let i = 0; i < rooms.length; i++) {
@@ -306,7 +281,7 @@ const checkForCrashed = setInterval(function() {
             playersToRemove.push(player);
         }
     }
-    
+
     for (let i = playersToRemove.length - 1; i >= 0; i--) {
         let player = playersToRemove[i];
         console.log(`${player.name} not responding`);
@@ -371,7 +346,7 @@ function addPlayer(ws, id, CoC, name, scene) {
 
 function removePlayer(id) {
     let player = playerLookup[id];
-    
+
     if (player == null) {
         console.log("player was null cant remove");
         return;
@@ -705,7 +680,7 @@ class Room {
             }
         }
     }
-    
+
     playerRemovedNotResponding(player) {
         for (let i = 0; i < this.players.length; i++) {
             let e = this.players[i];

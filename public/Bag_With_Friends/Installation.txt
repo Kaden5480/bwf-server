@@ -1,6 +1,0 @@
-INSTALL PART 1:
-download melonloader (nightly build, it has a fix not in stable yet): https://nightly.link/LavaGang/MelonLoader/workflows/build/alpha-development
-extract melonloader into the Peaks of Yore game folder (next to the exe)
-
-INSTALL PART 2 or MOD UPDATE:
-copy the folders next to this txt (Mods/ and Plugins/ and UserLibs/) into the Peaks of Yore game folder (next to the exe)
