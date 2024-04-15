@@ -1,3 +1,4 @@
+const https = require("https");
 const { WebSocketServer } = require("ws");
 const readline = require("readline");
 var fs = require('fs');
@@ -7,23 +8,9 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
 require('console-stamp')(console, 'HH:MM:ss.l');
 
-let dev = false;
-let stress = false;
-let modVersion = {major: 1, minor: 3, patch: 0};
+const config = require("./config.json");
 
-process.argv.forEach(function (val, index, array) {
-    if (val == "-dev") {
-        dev = true;
-    }
-    if (val == "-stress") {
-        stress = true;
-    }
-});
-
-console.log("dev: " + dev)
-
-const wss = new WebSocketServer({
-    port: 3000,
+let serverConfig = {
     perMessageDeflate: {
         zlibDeflateOptions: {
             // See zlib defaults.
@@ -43,7 +30,39 @@ const wss = new WebSocketServer({
         threshold: 1024 // Size (in bytes) below which messages
         // should not be compressed if context takeover is disabled.
     }
+}
+
+// Enable encryption
+if (config.encryption === true) {
+    serverConfig.server = https.createServer({
+        cert: fs.readFileSync(config.certPath),
+        key:  fs.readFileSync(config.keyPath)
+    });
+} else {
+    serverConfig.port = config.port;
+}
+
+let dev = false;
+let stress = false;
+let modVersion = {major: 1, minor: 3, patch: 0};
+
+process.argv.forEach(function (val, index, array) {
+    if (val == "-dev") {
+        dev = true;
+    }
+    if (val == "-stress") {
+        stress = true;
+    }
 });
+
+console.log("dev: " + dev)
+
+const wss = new WebSocketServer(serverConfig);
+
+if (config.encryption === true) {
+    serverConfig.server.listen(config.port);
+}
+
 console.log("server started on port 3000");
 
 let players = [];

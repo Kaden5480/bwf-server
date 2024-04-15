@@ -1,0 +1,7 @@
+{
+    "port": 3000,
+
+    "encryption": true,
+    "certPath": "/path/to/cert.pem",
+    "keyPath": "/path/to/key.pem"
+}
